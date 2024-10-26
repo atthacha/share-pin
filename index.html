@@ -164,7 +164,7 @@
             // อัปเดตตำแหน่งของผู้ใช้ทุก ๆ 10 วินาที
             setInterval(() => {
                 updateLocation(roomId, nickname);
-            }, 3000);
+            }, 2000);
         }
 
         function updateLocation(roomId, nickname) {
@@ -217,7 +217,7 @@
                         map: map,
                         label: {
                             text: nickname,
-                            color: 'white',
+                            color: '#f74854',
                             fontSize: '12px',
                             className: "custom-marker-label"
                         },
