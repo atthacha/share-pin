@@ -62,17 +62,13 @@
             background-color: #0056b3;
         }
 
-        .custom-marker-label {
+         .custom-marker-label {
             font-size: 20px;
             /* เพิ่มขนาดตัวอักษร */
             color: white;
             /* สีตัวอักษรเป็นสีขาว */
-            text-shadow:
-             1px 1px 0px black, 
-            -1px -1px 0px black,
-            1px -1px 0px black,
-            -1px 1px 0px black; /* สีขอบ */
-          
+            text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;
+            /* ขอบสีแดง */
         }
     </style>
 </head>
@@ -221,7 +217,7 @@
                         map: map,
                         label: {
                             text: nickname,
-                            color: '#4285F4',
+                            color: '#d30101',
                             fontSize: '13px',
                             className: "custom-marker-label"
                         },
