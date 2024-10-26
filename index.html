@@ -1,9 +1,265 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Share Location with Friends</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+
+        #map {
+            height: 60vh;
+            width: 90vw;
+            max-width: 600px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            margin-top: 20px;
+            transition: height 0.5s, width 0.5s;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 90vw;
+            max-width: 600px;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            transition: opacity 0.5s;
+        }
+
+        .controls input,
+        .controls button {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        .controls button {
+            background-color: #007BFF;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .controls button:hover {
+            background-color: #0056b3;
+        }
+
+        .custom-marker-label {
+            font-size: 20px;
+            /* เพิ่มขนาดตัวอักษร */
+            color: white;
+            /* สีตัวอักษรเป็นสีขาว */
+            text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+            /* ขอบสีแดง */
+        }
+    </style>
+</head>
+
 <body>
+    <div class="controls" id="controls">
+        <label for="roomId">Enter Room ID:</label>
+        <input type="text" id="roomId" placeholder="Room ID">
+        <label for="nickname">Enter your nickname:</label>
+        <input type="text" id="nickname" placeholder="Nickname">
+        <button onclick="startTracking()">Start Tracking</button>
+    </div>
+    <div id="map"></div>
+    <script>
+        let map;
+        let initialMarker;
+        const markers = {};
+        const scriptURL = 'https://script.google.com/macros/s/AKfycbwViw1u2jzcEgR86DiY3ijk-v_kF22kiFtVkGtzuiambfE9rLJhdzp7kXBNJIFq0l_o/exec'; // ใส่ URL ของ Google Apps Script ที่คุณ deploy
 
-<h1>My First Heading</h1>
-<p>My first paragraph.</p>
+        function initMap() {
+            map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 15,
+                center: { lat: 0, lng: 0 } // ตั้งค่าเริ่มต้น
+            });
 
+            // พยายามดึงตำแหน่งปัจจุบันของผู้ใช้
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const pos = {
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude
+                        };
+                        map.setCenter(pos); // ตั้งศูนย์กลางแผนที่ที่ตำแหน่งผู้ใช้
+                        initialMarker = new google.maps.Marker({
+                            position: pos,
+                            map: map,
+                            title: "Your Location"
+                        });
+                    },
+                    (error) => {
+                        handleLocationError(error, map.getCenter());
+                    }
+                );
+            } else {
+                // เบราว์เซอร์ไม่รองรับ Geolocation
+                handleLocationError({ code: 0 }, map.getCenter());
+            }
+        }
+
+        function handleLocationError(error, pos) {
+            let errorMessage = "An unknown error occurred.";
+            switch (error.code) {
+                case error.PERMISSION_DENIED:
+                    errorMessage = "User denied the request for Geolocation.";
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    errorMessage = "Location information is unavailable.";
+                    break;
+                case error.TIMEOUT:
+                    errorMessage = "The request to get user location timed out.";
+                    break;
+                case error.UNKNOWN_ERROR:
+                    errorMessage = "An unknown error occurred.";
+                    break;
+            }
+            alert(errorMessage);
+            map.setCenter(pos); // ตั้งศูนย์กลางแผนที่ที่ตำแหน่งเริ่มต้น
+        }
+
+        function startTracking() {
+            const roomId = document.getElementById('roomId').value;
+            const nickname = document.getElementById('nickname').value;
+
+            if (!roomId || !nickname) {
+                alert("Please enter both Room ID and Nickname.");
+                return;
+            }
+
+            // ลบหมุดสีแดงเริ่มต้น
+            if (initialMarker) {
+                initialMarker.setMap(null);
+            }
+
+            // ซ่อนฟอร์มและขยายแผนที่
+            document.getElementById('controls').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('controls').style.display = 'none';
+                document.getElementById('map').style.height = '100vh';
+                document.getElementById('map').style.width = '100vw';
+            }, 500);
+
+            // อัปเดตตำแหน่งของผู้ใช้ทุก ๆ 10 วินาที
+            setInterval(() => {
+                updateLocation(roomId, nickname);
+            }, 3000);
+        }
+
+        function updateLocation(roomId, nickname) {
+            navigator.geolocation.getCurrentPosition((position) => {
+                const pos = {
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude
+                };
+
+                // ส่งตำแหน่งไปยัง Google Apps Script
+                const script = document.createElement('script');
+                script.src = `${scriptURL}?action=updateLocation&roomId=${encodeURIComponent(roomId)}&nickname=${encodeURIComponent(nickname)}&lat=${pos.lat}&lng=${pos.lng}&callback=handleUpdateResponse`;
+                document.body.appendChild(script);
+            });
+        }
+
+        function handleUpdateResponse(response) {
+            console.log(response);
+            fetchLocations(document.getElementById('roomId').value);
+        }
+
+        function fetchLocations(roomId) {
+            const script = document.createElement('script');
+            script.src = `${scriptURL}?action=getLocations&roomId=${encodeURIComponent(roomId)}&callback=handleFetchResponse`;
+            document.body.appendChild(script);
+        }
+
+        function handleFetchResponse(data) {
+            if (Array.isArray(data) && data.length > 0) {
+                // ลบเครื่องหมายเก่าทั้งหมด
+                for (let nickname in markers) {
+                    if (markers[nickname]) {
+                        markers[nickname].setMap(null);
+                    }
+                }
+
+                // สร้างเครื่องหมายใหม่สำหรับแต่ละผู้ใช้
+                data.forEach(([roomId, nickname, lat, lng]) => {
+                    const color = stringToColor(nickname);
+                    const icon = {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        fillColor: color,
+                        fillOpacity: 0.8,
+                        scale: 8,
+                        strokeColor: 'white',
+                        strokeWeight: 2
+                    };
+                    markers[nickname] = new google.maps.Marker({
+                        position: { lat: parseFloat(lat), lng: parseFloat(lng) },
+                        map: map,
+                        label: {
+                            text: nickname,
+                            color: 'white',
+                            fontSize: '12px',
+                            className: "custom-marker-label"
+                        },
+                        icon: icon
+
+                    });
+
+
+
+
+
+                });
+            } else {
+                console.warn('No data available or data is not an array:', data);
+            }
+        }
+
+        function stringToColor(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                hash = str.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            let color = '#';
+            for (let i = 0; i < 3; i++) {
+                const value = (hash >> (i * 8)) & 0xFF;
+                color += ('00' + value.toString(16)).substr(-2);
+            }
+            return color;
+        }
+
+        function getRandomColor() {
+            const letters = '0123456789ABCDEF';
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+    </script>
+    <script async defer
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAIOYL2ItGdZ0ky5d6cDBzU0g2ZrbM2tYM&callback=initMap">
+        </script>
 </body>
+
 </html>
